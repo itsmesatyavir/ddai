@@ -21,12 +21,7 @@ pip install -r requirements.txt
 
 Create a .env file in the root directory:
 ```
-nano .env
-```
-Add your DDai account credentials:
-```bash
-USERNAME=your_ddai_username
-PASSWORD=your_ddai_password
+nano token.txt
 ```
 Save and exit.
 
@@ -59,7 +54,7 @@ python main.py
 
 Notes
 
-The bot will automatically login using the credentials in .env.
+The bot will automatically login using the credentials in token.txt
 
 If proxy.txt exists, it will randomly use one proxy for requests.
 
@@ -71,7 +66,6 @@ Logs and status messages will appear in the terminal.
 
 Troubleshooting
 
-Ensure .env file is correctly formatted.
 
 Make sure dependencies are installed.
 
