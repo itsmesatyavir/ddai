@@ -2,11 +2,7 @@ import requests
 import time
 import random
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
+from datetime import datetime
 
 TOKEN_FILE = 'token.txt'
 PROXY_FILE = 'proxy.txt'
@@ -27,7 +23,7 @@ def log(msg, color="white", symbol=""):
 def banner():
     print(f"{colors['cyan']}{colors['bold']}")
     print("---------------------------------------------")
-    print("  DDAI Network Bot - FORESTARMY ")
+    print("  DDAI SPACE BOT - FORESTARMY ")
     print("---------------------------------------------" + colors['reset'])
 
 def load_proxies():
@@ -56,72 +52,44 @@ def create_session(proxy=None):
 def get_headers(token):
     return {
         "accept": "application/json, text/plain, */*",
-        "accept-language": "en-US,en;q=0.9,id;q=0.8",
         "authorization": f"Bearer {token}",
-        "priority": "u=1, i",
-        "sec-ch-ua": '"Chromium";v="136", "Brave";v="136", "Not.A/Brand";v="99"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-site",
-        "sec-gpc": "1",
-        "Referer": "https://app.ddai.network/"
+        "Referer": "https://app.ddai.space/"
     }
 
 def read_token():
-    return open(TOKEN_FILE).read().strip() if os.path.exists(TOKEN_FILE) else None
-
-def save_token(token):
-    with open(TOKEN_FILE, 'w') as f:
-        f.write(token)
-    log("Token saved to token.txt", "green", "✅")
-
-def login(session):
-    log("Attempting to login...", "cyan", "⟳")
-    try:
-        payload = {"username": USERNAME, "password": PASSWORD}
-        headers = get_headers("")
-        headers["content-type"] = "application/json"
-        res = session.post("https://auth.ddai.network/login", json=payload, headers=headers)
-        data = res.json()
-        if data.get("status") == "success":
-            token = data["data"]["accessToken"]
-            log(f"Login successful | Username: {data['data']['user']['username']}", "green", "✅")
-            save_token(token)
-            return token
-        else:
-            log(f"Login failed: {data}", "red", "✗")
-    except Exception as e:
-        log(f"Error during login: {e}", "red", "✗")
-    return None
+    if os.path.exists(TOKEN_FILE):
+        return open(TOKEN_FILE).read().strip()
+    else:
+        log("token.txt not found! Please create it with your token.", "red", "✗")
+        return None
 
 def get_missions(session, token):
     log("Fetching missions...", "cyan", "⟳")
     try:
-        res = session.get("https://auth.ddai.network/missions", headers=get_headers(token))
-        data = res.json()
-        if data.get("status") == "success":
-            log(f"Found {len(data['data']['missions'])} missions", "green", "✅")
-            return data["data"]["missions"]
-        elif res.status_code == 401:
-            log("Token expired while fetching missions", "yellow", "⚠")
+        res = session.get("https://auth.ddai.space/missions", headers=get_headers(token))
+        if res.status_code == 401:
+            log("Token expired or invalid while fetching missions", "yellow", "⚠")
             return "token_expired"
+        data = res.json()
+        missions = data.get("data", {}).get("missions", [])
+        log(f"Found {len(missions)} missions", "green", "✓")
+        return missions
     except Exception as e:
         log(f"Error fetching missions: {e}", "red", "✗")
-    return None
+        return None
 
 def claim_mission(session, token, mission_id):
     log(f"Claiming mission ID: {mission_id}", "white", "➤")
     try:
-        res = session.post(f"https://auth.ddai.network/missions/claim/{mission_id}", headers=get_headers(token))
-        data = res.json()
-        if data.get("status") == "success":
-            log(f"Mission claimed | Reward: {data['data']['rewards']['requests']} requests", "green", "✅")
-            return data
-        elif res.status_code == 401:
+        res = session.post(f"https://auth.ddai.space/missions/claim/{mission_id}", headers=get_headers(token))
+        if res.status_code == 401:
             log("Token expired while claiming mission", "yellow", "⚠")
             return "token_expired"
+        data = res.json()
+        if data.get("status") == "success":
+            reward = data["data"]["rewards"]["requests"]
+            log(f"Mission claimed | Reward: {reward} requests", "green", "✅")
+            return data
     except Exception as e:
         log(f"Error claiming mission: {e}", "red", "✗")
     return None
@@ -129,13 +97,10 @@ def claim_mission(session, token, mission_id):
 def complete_missions(session, token):
     missions = get_missions(session, token)
     if missions == "token_expired":
-        token = login(session)
-        if not token:
-            return None
-        missions = get_missions(session, token)
-
+        log("Token is invalid or expired. Cannot continue.", "red", "✗")
+        return None
     if not missions:
-        log("Failed to fetch missions, skipping...", "red", "✗")
+        log("No missions found or fetch failed", "red", "✗")
         return token
 
     for mission in missions:
@@ -143,27 +108,26 @@ def complete_missions(session, token):
             log(f"Processing mission: {mission['title']}", "white", "➤")
             result = claim_mission(session, token, mission["_id"])
             if result == "token_expired":
-                token = login(session)
-                if not token:
-                    return None
-                claim_mission(session, token, mission["_id"])
+                log("Token expired during mission claiming. Stopping.", "red", "✗")
+                return None
             time.sleep(2)
         else:
-            log(f"Mission already completed: {mission['title']}", "green", "✓")
-    log("All missions processed", "green", "✅")
+            log(f"Already completed: {mission['title']}", "yellow", "✓")
+    log("All available missions processed", "green", "✅")
     return token
 
 def model_response(session, token):
     log("Sending Model Response request...", "cyan", "⟳")
     try:
-        res = session.get("https://auth.ddai.network/modelResponse", headers=get_headers(token))
-        data = res.json()
-        log(f"Model Response | Throughput: {data['data']['throughput']}", "green", "✅")
-        return data
-    except requests.HTTPError as e:
-        if e.response.status_code == 401:
+        res = session.get("https://auth.ddai.space/modelResponse", headers=get_headers(token))
+        if res.status_code == 401:
             log("Token expired during Model Response", "yellow", "⚠")
             return "token_expired"
+        data = res.json()
+        throughput = data.get("data", {}).get("throughput", "0")
+        decimal = int(throughput, 2)
+        log(f"Model Response | Throughput: {throughput} (Decimal: {decimal})", "green", "✅")
+        return data
     except Exception as e:
         log(f"Error in Model Response: {e}", "red", "✗")
     return None
@@ -171,62 +135,55 @@ def model_response(session, token):
 def onchain_trigger(session, token):
     log("Sending Onchain Trigger request...", "cyan", "⟳")
     try:
-        res = session.post("https://auth.ddai.network/onchainTrigger", headers=get_headers(token))
-        data = res.json()
-        log(f"Onchain Trigger | Requests Total: {colors['yellow']}{data['data']['requestsTotal']}{colors['reset']}", "green", "✅")
-        return data
-    except requests.HTTPError as e:
-        if e.response.status_code == 401:
+        res = session.post("https://auth.ddai.space/onchainTrigger", headers=get_headers(token))
+        if res.status_code == 401:
             log("Token expired during Onchain Trigger", "yellow", "⚠")
             return "token_expired"
+        data = res.json()
+        total = data.get("data", {}).get("requestsTotal", "N/A")
+        log(f"Onchain Trigger | Requests Total: {colors['yellow']}{total}{colors['reset']}", "green", "✅")
+        return data
     except Exception as e:
         log(f"Error in Onchain Trigger: {e}", "red", "✗")
     return None
 
 def main():
     banner()
-    log("Starting DDai Network Auto Bot...", "green", "✓")
+    log("Starting DDai SPACE Bot...", "green", "✓")
     proxies = load_proxies()
     proxy = random.choice(proxies) if proxies else None
     session = create_session(proxy)
 
-    request_count = 0
     token = read_token()
     if not token:
-        log("No token found, attempting to login...", "yellow", "⚠")
-        token = login(session)
-        if not token:
-            log("Failed to start bot: Unable to obtain token", "red", "✗")
-            return
-
-    log("Starting mission completion process...", "white", "➤")
-    token = complete_missions(session, token)
-    if not token:
-        log("Failed to complete missions, exiting...", "red", "✗")
+        log("No token found, exiting...", "red", "✗")
         return
 
-    log("Starting request loop...", "white", "➤")
+    # Complete missions once at the beginning
+    token = complete_missions(session, token)
+    if not token:
+        log("Missions could not be completed. Exiting.", "red", "✗")
+        return
+
+    request_count = 0
     while True:
         try:
             for _ in range(3):
                 result = model_response(session, token)
                 if result == "token_expired":
-                    token = login(session)
-                    if not token:
-                        raise Exception("Unable to obtain new token")
-                    model_response(session, token)
+                    log("Token expired. Exiting.", "red", "✗")
+                    return
 
             result = onchain_trigger(session, token)
             if result == "token_expired":
-                token = login(session)
-                if not token:
-                    raise Exception("Unable to obtain new token")
-                onchain_trigger(session, token)
+                log("Token expired. Exiting.", "red", "✗")
+                return
 
             request_count += 1
             log(f"Total Requests Sent: {request_count}", "green", "✓")
-            log("Waiting for 30 seconds...", "cyan", "⟳")
-            time.sleep(30)
+            delay = random.randint(10, 60)
+            log(f"Waiting for {delay} seconds...", "cyan", "⏳")
+            time.sleep(delay)
 
         except Exception as e:
             log(f"Error in main loop: {e}", "red", "✗")
