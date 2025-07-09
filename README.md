@@ -19,7 +19,7 @@ pip install -r requirements.txt
 ```
 3. Configure environment variables
 
-Create a .env file in the root directory:
+Create a token file in the root directory:
 ```
 nano token.txt
 ```
