@@ -19,9 +19,9 @@ pip install -r requirements.txt
 ```
 3. Configure environment variables
 
-Create a token file in the root directory:
+To save the tokens to tokens.json :
 ```
-nano tokens.json
+python token.py
 ```
 Save and exit.
 
