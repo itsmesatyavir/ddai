@@ -24,6 +24,7 @@ To save the tokens to tokens.json :
 python token.py
 ```
 Save and exit.
+To Extract Token Use This [JavaScript](https://greasyfork.org/en/scripts/542089-forest-army-ddai-token-extractor-access-refresh)
 
 4. (Optional) Configure proxies
 
