@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 Create a token file in the root directory:
 ```
-nano token.txt
+nano tokens.json
 ```
 Save and exit.
 
@@ -54,7 +54,7 @@ python main.py
 
 Notes
 
-The bot will automatically login using the credentials in token.txt
+The bot will automatically login using the credentials in tokens.json
 
 If proxy.txt exists, it will randomly use one proxy for requests.
 
